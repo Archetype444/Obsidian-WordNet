@@ -1,16 +1,9 @@
-# vscode
-.vscode 
-
-# npm
-node_modules
-package-lock.json
-
-# build
-build
-main.js
+node_modules/
+build/
+.test-build/
 *.js.map
+main.js
 dict-MyDict.json
-
-# obsidian
 data.json
-@updates.md 
+.vscode/
+.DS_Store

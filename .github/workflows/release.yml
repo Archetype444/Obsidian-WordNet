@@ -1,33 +1,28 @@
-name: Release Obsidian plugin
-
+name: Test and release offline plugin
 on:
   push:
-    tags:
-      - '*'
-
+    tags: ['[0-9]*']
+  pull_request:
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '21.x'
-
-      - name: Build plugin
-        run: |
-          npm install
-          npm run build
-
-      - name: Create release
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - run: npm run verify:offline
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag="${GITHUB_REF#refs/tags/}"
-
-          gh release create "$tag" \
-            --title="$tag" \
-            build/main.js manifest.json styles.css
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" build/main.js build/manifest.json build/styles.css build/LICENSE build/LICENSE-WordNet --title "WordNet Offline ${GITHUB_REF_NAME}" --generate-notes
+    permissions:
+      contents: write

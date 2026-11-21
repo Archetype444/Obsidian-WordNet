@@ -1,88 +1,39 @@
-import {
-	type Editor,
-	type EditorPosition,
-	EditorSuggest,
-	type EditorSuggestContext,
-	type EditorSuggestTriggerInfo,
-	MarkdownView,
-	Notice,
-	type TFile,
-} from "obsidian";
+import { EditorSuggest, type Editor, type EditorPosition, type EditorSuggestContext,
+	type EditorSuggestTriggerInfo, type TFile } from "obsidian";
 import type WordNetPlugin from "./main";
-import type { Definition } from "./suggester";
+import type { Definition } from "./dictionary";
 
 export default class TheEditorSuggestor extends EditorSuggest<Definition> {
-	plugin: WordNetPlugin;
-	pattern: RegExp;
-	lastEditorSuggestTriggerInfo: EditorSuggestTriggerInfo;
+	constructor(private plugin: WordNetPlugin) { super(plugin.app); }
 
-	constructor(plugin: WordNetPlugin) {
-		super(plugin.app);
-		this.plugin = plugin;
-		this.updatePattern();
+	onTrigger(cursor: EditorPosition, editor: Editor, _file: TFile | null): EditorSuggestTriggerInfo | null {
+		if (!this.plugin.settings.slashCommandEnabled) return null;
+		const line = editor.getRange({ line: cursor.line, ch: 0 }, cursor);
+		const shortcut = this.plugin.settings.slashCommandShortcut;
+		const start = line.lastIndexOf(shortcut);
+		if (start < 0) return null;
+		const query = line.slice(start + shortcut.length);
+		if (!query.trim()) return null;
+		return { start: { line: cursor.line, ch: start }, end: cursor, query };
 	}
 
-	updatePattern(): void {
-		this.pattern = new RegExp(
-			`.*${this.plugin.settings.slashCommandShortcut}(.*)$`,
-		);
-	}
-
-	onTrigger(
-		cursor: EditorPosition,
-		editor: Editor,
-		_file: TFile,
-	): EditorSuggestTriggerInfo {
-		if (this.plugin.settings.slashCommandEnabled === false) return;
-		const range = editor.getRange(
-			{ line: cursor.line, ch: 0 },
-			{ line: cursor.line, ch: cursor.ch },
-		);
-
-		const testResults = this.pattern.exec(range);
-		if (!testResults) return null;
-
-		const suggestText = testResults[1];
-		this.lastEditorSuggestTriggerInfo = {
-			start: {
-				line: cursor.line,
-				ch:
-					cursor.ch -
-					suggestText.length -
-					this.plugin.settings.slashCommandShortcut.length,
-			},
-			end: { line: cursor.line, ch: cursor.ch },
-			query: testResults[1],
-		};
-		return this.lastEditorSuggestTriggerInfo;
-	}
-
-	getSuggestions(context: EditorSuggestContext): Promise<Definition[]> {
-		return this.plugin.dictionarySuggestor.query(context.query);
+	getSuggestions(context: EditorSuggestContext): Definition[] {
+		return this.plugin.dictionary.query(context.query);
 	}
 
 	renderSuggestion(item: Definition, el: HTMLElement): void {
 		el.createEl("b", { text: item.Term });
-		el.createEl("br");
-		el.appendText(item.Definition);
+		el.createEl("div", { text: item.Definition });
 	}
 
 	selectSuggestion(item: Definition, evt: MouseEvent | KeyboardEvent): void {
-		const currentView =
-			this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		const context = this.context;
 		this.close();
-		if (evt.ctrlKey) {
-			new Notice(`${item.Term} \n${item.Definition}`, 60000);
-			currentView.editor.replaceRange(
-				"",
-				this.lastEditorSuggestTriggerInfo.start,
-				this.lastEditorSuggestTriggerInfo.end,
-			);
-		} else
-			currentView.editor.replaceRange(
-				this.plugin.renderDefinitionFromTemplate(item.Term, item.Definition),
-				this.lastEditorSuggestTriggerInfo.start,
-				this.lastEditorSuggestTriggerInfo.end,
-			);
+		if (!context) return;
+		if (evt.ctrlKey || evt.metaKey) {
+			void this.plugin.openLookup(item.Term);
+			return;
+		}
+		context.editor.replaceRange(this.plugin.renderDefinitionFromTemplate(item.Term, item.Definition), context.start, context.end);
 	}
 }

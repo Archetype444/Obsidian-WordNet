@@ -1,1 +1,9 @@
-/* Empty file */
+.wordnet-dictionary-view { padding: var(--size-4-4); }
+.wordnet-dictionary-view h2 { margin-top: 0; font-size: var(--font-ui-large); }
+.wordnet-search .search-input-container { width: 100%; }
+.wordnet-local-status { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.wordnet-results { margin-top: var(--size-4-4); }
+.wordnet-definition { padding: var(--size-4-3) 0; border-top: 1px solid var(--background-modifier-border); }
+.wordnet-definition h3 { margin: 0 0 var(--size-4-2); font-size: var(--font-ui-medium); }
+.wordnet-definition p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.wordnet-empty { color: var(--text-muted); line-height: 1.6; }

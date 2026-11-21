@@ -1,0 +1,10 @@
+import {build} from 'esbuild';
+import {readdir, mkdir} from 'node:fs/promises';
+import {spawnSync} from 'node:child_process';
+import {resolve} from 'node:path';
+const tests = (await readdir('tests')).filter(name => name.endsWith('.test.mjs')).map(name => `tests/${name}`);
+await mkdir('.test-build', {recursive: true});
+await build({entryPoints: tests, outdir: '.test-build', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['jsdom'], alias: {obsidian: resolve('tests/helpers/obsidian.ts')}, loader: {'.json': 'text'}, logLevel: 'warning'});
+const files = (await readdir('.test-build')).filter(name => name.endsWith('.js')).map(name => `.test-build/${name}`);
+const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...files], {stdio: 'inherit'});
+process.exitCode = result.status ?? 1;
